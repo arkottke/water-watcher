@@ -1,0 +1,14 @@
+[Unit]
+Description=Water Watcher Service
+After=network.target
+
+[Service]
+Type=simple
+User=albert
+WorkingDirectory=/home/albert/water-watcher
+ExecStart=/usr/bin/python water_watcher.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
