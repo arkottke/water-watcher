@@ -10,6 +10,7 @@ import argparse
 
 from leviton import LevitonController
 
+
 class Database:
     def __init__(self, db_path: str = "water_sensor.db"):
         """Initialize database connection"""
@@ -101,10 +102,7 @@ class WaterDetector:
         self.last_notification_time = None
 
         # Minimum time between notifications
-        self.notification_cooldown = (
-            #timedelta(minutes=30) if debug else timedelta(hours=6)
-            timedelta(hours=6) if debug else timedelta(hours=6)
-        )
+        self.notification_cooldown = timedelta(hours=1) if debug else timedelta(hours=6)
 
         # Setup logging
         logging.basicConfig(
@@ -173,7 +171,6 @@ class WaterDetector:
         print("\nStarting water monitoring...")
         print("Press CTRL+C to stop\n")
 
-
         try:
             while True:
                 current_time = datetime.now()
@@ -183,27 +180,25 @@ class WaterDetector:
                 self.debug_print(f"Current state: {current_state} at {current_time}")
 
                 if current_time.hour > 6 and current_time.hour < 18 and current_state:
-                    if self.leviton_cntrl:
-                        status = self.leviton_cntrl.get_plug_status()
-                        print(status)
-                        if status == "OFF":
-                            self.debug_print("Plug is OFF, turning it ON")
+                    if (
+                        self.leviton_cntrl
+                        and self.leviton_cntrl.get_plug_status() == "OFF"
+                    ):
+                        self.debug_print("Plug is OFF, turning it ON")
 
-                            self.leviton_cntrl.set_plug("ON")
+                        self.leviton_cntrl.set_plug("ON")
 
-                            message = f"Turning plug on."
+                        message = "Turning plug on."
+                        self.debug_print(message)
+                        logging.info(message)
 
-                            self.debug_print(message)
-                            logging.info(message)
-
-                            if self.telegram:
-                                telegram_msg = (
-                                    f"{emoji} Water Sensor Update {emoji}\n"
-                                    f"Water detected.\n"
-                                    f"Turning bird bath ON"
-                                )
-                                self.telegram.send_message(telegram_msg)
-
+                        if self.telegram:
+                            telegram_msg = (
+                                f"{emoji} Water Sensor Update {emoji}\n"
+                                f"Water detected.\n"
+                                f"Turning bird bath ON"
+                            )
+                            self.telegram.send_message(telegram_msg)
 
                 if self.last_reading_time is None:
                     # Initial reading
@@ -270,9 +265,9 @@ if __name__ == "__main__":
     # Configuration
     telegram_token = os.environ.get("SECRET_TELEGRAM_TOKEN")
     telegram_chat = os.environ.get("SECRET_TELEGRAM_CHAT")
-    
-    leviton_email = os.environ.get('SECRET_LEVITON_USER')
-    leviton_pass = os.environ.get('SECRET_LEVITON_PASS')
+
+    leviton_email = os.environ.get("SECRET_LEVITON_USER")
+    leviton_pass = os.environ.get("SECRET_LEVITON_PASS")
 
     # Initialize components
     telegram = TelegramNotifier(telegram_token, telegram_chat)
@@ -282,8 +277,7 @@ if __name__ == "__main__":
     detector = WaterDetector(
         sensor_pin=17,
         power_pin=27,
-        leviton_cntrl=LevitonController(
-            leviton_email, leviton_pass),
+        leviton_cntrl=LevitonController(leviton_email, leviton_pass),
         telegram_notifier=telegram,
         database=db,
         debug=args.debug,
