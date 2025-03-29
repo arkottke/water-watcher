@@ -34,19 +34,38 @@ class LevitonController:
             print(f"Failed to login: {e}")
             raise
 
-    def list_devices(self):
-        """List all devices and their IDs"""
+    def _call_api(self, endpoint, method="GET", payload=None):
+        """Call the Leviton API"""
 
         if self.access_token is None:
             self.login()
 
-        devices_url = f"{self.base_url}/Residences/{self.residence_id}/iotSwitches"
+        url = f"{self.base_url}/{endpoint}"
         headers = {"Authorization": self.access_token}
 
         try:
-            response = requests.get(devices_url, headers=headers)
+            if method == "GET":
+                response = requests.get(url, headers=headers)
+            elif method == "POST":
+                response = requests.post(url, headers=headers, json=payload)
+            elif method == "PUT":
+                response = requests.put(url, headers=headers, json=payload)
+            else:
+                raise ValueError("Invalid HTTP method")
+
             response.raise_for_status()
-            devices = response.json()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"API call failed: {e}")
+            raise
+
+    def list_devices(self):
+        """List all devices and their IDs"""
+
+        devices_url = f"Residences/{self.residence_id}/iotSwitches"
+
+        try:
+            devices = self._call_api(devices_url, method="GET")
 
             print("\nAvailable Devices:")
             print("-----------------")
@@ -64,36 +83,24 @@ class LevitonController:
 
     def get_plug_status(self):
         """Get the status of the smart plug"""
-        if not self.access_token:
-            self.login()
-
-        control_url = f"{self.base_url}/IotSwitches/{self.device_id}"
-        headers = {"Authorization": self.access_token}
+        control_url = f"IotSwitches/{self.device_id}"
 
         try:
-            response = requests.get(control_url, headers=headers)
-            response.raise_for_status()
-            status = response.json().get("power")
-            print(f"Plug status: {status}")
-            return status
+            status = self._call_api(control_url, method="GET")
+            return status['power']
         except requests.exceptions.RequestException as e:
             print(f"Failed to get plug status: {e}")
             raise
 
     def set_plug(self, power):
-        assert power in ['ON', 'OFF']
-
         """Turn on the smart plug"""
-        if not self.access_token:
-            self.login()
+        control_url = f"IotSwitches/{self.device_id}"
 
-        control_url = f"{self.base_url}/IotSwitches/{self.device_id}"
-        headers = {"Authorization": self.access_token}
+        assert power in ['ON', 'OFF']
         payload = {"power": power}
 
         try:
-            response = requests.put(control_url, headers=headers, json=payload)
-            response.raise_for_status()
+            self._call_api(control_url, method="PUT", payload=payload)
             print(
                 f"Successfully turned on plug at {datetime.now().strftime('%H:%M:%S')}"
             )
