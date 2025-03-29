@@ -178,6 +178,7 @@ class WaterDetector:
             while True:
                 current_time = datetime.now()
                 current_state = self.check_water()
+                emoji = "💧" if current_state else "🔹"
 
                 self.debug_print(f"Current state: {current_state} at {current_time}")
 
@@ -231,7 +232,6 @@ class WaterDetector:
 
                     # Send notification if enabled
                     if self.telegram:
-                        emoji = "💧" if current_state else "🔹"
                         telegram_msg = (
                             f"{emoji} Water Sensor Update {emoji}\n"
                             f"Location: {self.location}\n"
