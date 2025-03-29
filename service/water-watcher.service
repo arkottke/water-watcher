@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=albert
+EnvironmentFile=/etc/water-watcher.env
 WorkingDirectory=/home/albert/water-watcher
 ExecStart=/usr/bin/python water_watcher.py
 Restart=on-failure
