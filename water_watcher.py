@@ -65,6 +65,24 @@ class LevitonController:
             print(f"Failed to list devices: {e}")
             raise
 
+    def get_plug_status(self):
+        """Get the status of the smart plug"""
+        if not self.access_token:
+            self.login()
+
+        control_url = f"{self.base_url}/IotSwitches/{self.device_id}"
+        headers = {"Authorization": self.access_token}
+
+        try:
+            response = requests.get(control_url, headers=headers)
+            response.raise_for_status()
+            status = response.json().get("power")
+            print(f"Plug status: {status}")
+            return status
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to get plug status: {e}")
+            raise
+
     def set_plug(self, power):
         assert power in ['ON', 'OFF']
 
@@ -250,6 +268,7 @@ class WaterDetector:
         print("\nStarting water monitoring...")
         print("Press CTRL+C to stop\n")
 
+
         try:
             while True:
                 current_time = datetime.now()
@@ -257,21 +276,27 @@ class WaterDetector:
 
                 self.debug_print(f"Current state: {current_state} at {current_time}")
 
-                if current_time.hour == 7 and current_time.minute == 0 and current_state:
-                    self.leviton_cntrl.set_plug("ON")
+                if current_time.hour > 6 and current_time.hour < 18 and current_state:
+                    if self.leviton_cntrl:
+                        status = self.leviton_cntrl.get_plug_status()
+                        print(status)
+                        if status == "OFF":
+                            self.debug_print("Plug is OFF, turning it ON")
 
-                    message = f"Turning plug on."
+                            self.leviton_cntrl.set_plug("ON")
 
-                    self.debug_print(message)
-                    logging.info(message)
+                            message = f"Turning plug on."
 
-                    if self.telegram:
-                        telegram_msg = (
-                            f"{emoji} Water Sensor Update {emoji}\n"
-                            f"Water detected.\n"
-                            f"Turning bird bath ON"
-                        )
-                        self.telegram.send_message(telegram_msg)
+                            self.debug_print(message)
+                            logging.info(message)
+
+                            if self.telegram:
+                                telegram_msg = (
+                                    f"{emoji} Water Sensor Update {emoji}\n"
+                                    f"Water detected.\n"
+                                    f"Turning bird bath ON"
+                                )
+                                self.telegram.send_message(telegram_msg)
 
 
                 if self.last_reading_time is None:
